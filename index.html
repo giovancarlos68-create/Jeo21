@@ -64,7 +64,7 @@
 
     <div class="mini21">21</div>
 
-    <h2 id="authTitle">Começar</h2>
+    <h2 id="authTitle">Entrar</h2>
 
     <p class="lead">
       A tua progressão fica ligada à tua conta.
@@ -80,7 +80,6 @@
       </button>
     </div>
 
-
     <form id="auth">
 
       <label class="field">
@@ -94,7 +93,6 @@
         >
       </label>
 
-
       <label class="field">
         Palavra-passe
         <input
@@ -107,7 +105,6 @@
         >
       </label>
 
-
       <button
         class="primary"
         type="submit"
@@ -118,81 +115,11 @@
 
     </form>
 
-
-    <!-- CONFIRMAÇÃO DO EMAIL -->
-
-    <div
-      id="confirmationBox"
-      class="confirmation hidden"
-      style="
-        margin-top:18px;
-        padding:18px;
-        border:1px solid #263544;
-        border-radius:14px;
-        background:#070d14;
-      "
-    >
-
-      <strong
-        style="
-          display:block;
-          font-size:18px;
-          margin-bottom:8px;
-        "
-      >
-        📩 Confirma o teu email
-      </strong>
-
-      <p
-        style="
-          color:#8c9bab;
-          margin:0 0 15px;
-        "
-      >
-        Enviámos um email de confirmação para o teu endereço.
-        Verifica também a pasta Spam ou Promoções.
-      </p>
-
-
-      <!-- BOTÃO 1 -->
-
-      <button
-        id="resendConfirm"
-        type="button"
-        class="secondary"
-        style="
-          width:100%;
-          margin-bottom:9px;
-          cursor:pointer;
-        "
-      >
-        ↻ Reenviar confirmação
-      </button>
-
-
-      <!-- BOTÃO 2 -->
-
-      <button
-        id="checkConfirm"
-        type="button"
-        class="secondary"
-        style="
-          width:100%;
-          cursor:pointer;
-        "
-      >
-        ✓ Já confirmei
-      </button>
-
-    </div>
-
-
-    <p id="msg" class="msg"></p>
+    <p id="msg" class="msg" aria-live="polite"></p>
 
   </section>
 
 </main>
-
 
 <footer>
   <strong>21</strong>
@@ -201,73 +128,10 @@
   evolução ligada ao backend
 </footer>
 
-
-<!-- SUPABASE -->
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script src="config.js"></script>
 <script src="core.js"></script>
 <script src="auth.js"></script>
 
-
-<!-- VERIFICAR CONFIRMAÇÃO -->
-
-<script>
-
-const confirmationBox =
-  document.getElementById("confirmationBox");
-
-const checkConfirm =
-  document.getElementById("checkConfirm");
-
-const msg =
-  document.getElementById("msg");
-
-
-checkConfirm?.addEventListener(
-  "click",
-  async () => {
-
-    try {
-
-      msg.textContent =
-        "A verificar a confirmação…";
-
-      const response =
-        await db.auth.getSession();
-
-      const session =
-        response.data?.session;
-
-      if (session) {
-
-        msg.textContent =
-          "Email confirmado. A entrar…";
-
-        setTimeout(() => {
-          location.href = "mundos.html";
-        }, 500);
-
-      } else {
-
-        msg.textContent =
-          "Ainda não confirmado. Confirma o email e tenta novamente.";
-
-      }
-
-    } catch (error) {
-
-      msg.textContent =
-        error.message || "Não foi possível verificar.";
-
-    }
-
-  }
-);
-
-
-</script>
-
 </body>
-    </html>
+          </html>
