@@ -1,1 +1,273 @@
-<!doctype html><html lang="pt-AO"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#05080d"><title>21 — Nexus</title><link rel="stylesheet" href="app.css"></head><body><div class="bg"><div class="orb one"></div><div class="orb two"></div></div><header><a class="brand" href="index.html"><b>21</b><span>NEXUS</span></a><nav><a href="mundos.html">Mundos</a><a href="nexus.html">Nexus</a><a href="perfil.html">Perfil</a><a href="ranking.html">Ranking</a></nav></header><main class="landing"><section class="hero"><div class="number">21</div><p class="eyebrow">NEXUS EXPERIENCE</p><h1>O teu conhecimento.<br><i>A tua evolução.</i></h1><p class="lead">21 mundos. Perguntas adaptativas. XP, streaks, risco e evolução guardados no teu perfil.</p><div class="actions"><a class="primary" href="mundos.html">Entrar nos 21 Mundos</a><a class="secondary" href="nexus.html">Abrir Nexus</a></div></section><section class="login panel"><div class="mini21">21</div><h2 id="authTitle">Começar</h2><p class="lead">A tua progressão fica ligada à tua conta.</p><div class="switch"><button id="loginMode" class="active" type="button">Entrar</button><button id="signupMode" type="button">Criar conta</button></div><form id="auth"><label class="field">Email<input id="email" type="email" required autocomplete="email"></label><label class="field">Palavra-passe<input id="password" type="password" minlength="6" required autocomplete="current-password"></label><button class="primary" type="submit" id="submit">Entrar</button></form><p id="msg" class="msg"></p></section></main><footer><strong>21</strong> NEXUS <span>•</span> evolução ligada ao backend</footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="core.js"></script><script src="auth.js"></script></body></html>
+<!doctype html>
+<html lang="pt-AO">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#05080d">
+  <title>21 — Nexus</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+
+<body>
+
+<div class="bg">
+  <div class="orb one"></div>
+  <div class="orb two"></div>
+</div>
+
+<header>
+  <a class="brand" href="index.html">
+    <b>21</b>
+    <span>NEXUS</span>
+  </a>
+
+  <nav>
+    <a href="mundos.html">Mundos</a>
+    <a href="nexus.html">Nexus</a>
+    <a href="perfil.html">Perfil</a>
+    <a href="ranking.html">Ranking</a>
+  </nav>
+</header>
+
+<main class="landing">
+
+  <section class="hero">
+
+    <div class="number">21</div>
+
+    <p class="eyebrow">NEXUS EXPERIENCE</p>
+
+    <h1>
+      O teu conhecimento.<br>
+      <i>A tua evolução.</i>
+    </h1>
+
+    <p class="lead">
+      21 mundos. Perguntas adaptativas. XP, streaks, risco e evolução
+      guardados no teu perfil.
+    </p>
+
+    <div class="actions">
+      <a class="primary" href="mundos.html">
+        Entrar nos 21 Mundos
+      </a>
+
+      <a class="secondary" href="nexus.html">
+        Abrir Nexus
+      </a>
+    </div>
+
+  </section>
+
+
+  <section class="login panel">
+
+    <div class="mini21">21</div>
+
+    <h2 id="authTitle">Começar</h2>
+
+    <p class="lead">
+      A tua progressão fica ligada à tua conta.
+    </p>
+
+    <div class="switch">
+      <button id="loginMode" class="active" type="button">
+        Entrar
+      </button>
+
+      <button id="signupMode" type="button">
+        Criar conta
+      </button>
+    </div>
+
+
+    <form id="auth">
+
+      <label class="field">
+        Email
+        <input
+          id="email"
+          type="email"
+          required
+          autocomplete="email"
+          placeholder="teuemail@exemplo.com"
+        >
+      </label>
+
+
+      <label class="field">
+        Palavra-passe
+        <input
+          id="password"
+          type="password"
+          minlength="6"
+          required
+          autocomplete="current-password"
+          placeholder="Mínimo 6 caracteres"
+        >
+      </label>
+
+
+      <button
+        class="primary"
+        type="submit"
+        id="submit"
+      >
+        Entrar
+      </button>
+
+    </form>
+
+
+    <!-- CONFIRMAÇÃO DO EMAIL -->
+
+    <div
+      id="confirmationBox"
+      class="confirmation hidden"
+      style="
+        margin-top:18px;
+        padding:18px;
+        border:1px solid #263544;
+        border-radius:14px;
+        background:#070d14;
+      "
+    >
+
+      <strong
+        style="
+          display:block;
+          font-size:18px;
+          margin-bottom:8px;
+        "
+      >
+        📩 Confirma o teu email
+      </strong>
+
+      <p
+        style="
+          color:#8c9bab;
+          margin:0 0 15px;
+        "
+      >
+        Enviámos um email de confirmação para o teu endereço.
+        Verifica também a pasta Spam ou Promoções.
+      </p>
+
+
+      <!-- BOTÃO 1 -->
+
+      <button
+        id="resendConfirm"
+        type="button"
+        class="secondary"
+        style="
+          width:100%;
+          margin-bottom:9px;
+          cursor:pointer;
+        "
+      >
+        ↻ Reenviar confirmação
+      </button>
+
+
+      <!-- BOTÃO 2 -->
+
+      <button
+        id="checkConfirm"
+        type="button"
+        class="secondary"
+        style="
+          width:100%;
+          cursor:pointer;
+        "
+      >
+        ✓ Já confirmei
+      </button>
+
+    </div>
+
+
+    <p id="msg" class="msg"></p>
+
+  </section>
+
+</main>
+
+
+<footer>
+  <strong>21</strong>
+  NEXUS
+  <span>•</span>
+  evolução ligada ao backend
+</footer>
+
+
+<!-- SUPABASE -->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="config.js"></script>
+<script src="core.js"></script>
+<script src="auth.js"></script>
+
+
+<!-- VERIFICAR CONFIRMAÇÃO -->
+
+<script>
+
+const confirmationBox =
+  document.getElementById("confirmationBox");
+
+const checkConfirm =
+  document.getElementById("checkConfirm");
+
+const msg =
+  document.getElementById("msg");
+
+
+checkConfirm?.addEventListener(
+  "click",
+  async () => {
+
+    try {
+
+      msg.textContent =
+        "A verificar a confirmação…";
+
+      const response =
+        await db.auth.getSession();
+
+      const session =
+        response.data?.session;
+
+      if (session) {
+
+        msg.textContent =
+          "Email confirmado. A entrar…";
+
+        setTimeout(() => {
+          location.href = "mundos.html";
+        }, 500);
+
+      } else {
+
+        msg.textContent =
+          "Ainda não confirmado. Confirma o email e tenta novamente.";
+
+      }
+
+    } catch (error) {
+
+      msg.textContent =
+        error.message || "Não foi possível verificar.";
+
+    }
+
+  }
+);
+
+
+</script>
+
+</body>
+    </html>
