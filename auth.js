@@ -1,101 +1,199 @@
 let authMode = "login";
 
-const $ = s => document.querySelector(s);
+const $ = (selector) => document.querySelector(selector);
 
 function renderMode() {
-  loginMode.classList.toggle("active", authMode === "login");
-  signupMode.classList.toggle("active", authMode === "signup");
-  authTitle.textContent = authMode === "login" ? "Entrar" : "Criar conta";
-  submit.textContent = authMode === "login" ? "Entrar" : "Criar conta";
+  const loginButton = $("#loginMode");
+  const signupButton = $("#signupMode");
+  const title = $("#authTitle");
+  const submitButton = $("#submit");
+  const confirmationBox = $("#confirmationBox");
 
-  const resend = document.getElementById("resendConfirm");
-  if (resend) resend.classList.toggle("hidden", authMode !== "signup");
+  if (loginButton) {
+    loginButton.classList.toggle("active", authMode === "login");
+  }
+
+  if (signupButton) {
+    signupButton.classList.toggle("active", authMode === "signup");
+  }
+
+  if (title) {
+    title.textContent =
+      authMode === "login" ? "Entrar" : "Criar conta";
+  }
+
+  if (submitButton) {
+    submitButton.textContent =
+      authMode === "login" ? "Entrar" : "Criar conta";
+  }
+
+  // A confirmação por email está desativada no Supabase.
+  // Portanto, nunca mostramos o painel antigo de confirmação.
+  if (confirmationBox) {
+    confirmationBox.classList.add("hidden");
+  }
 }
 
-loginMode.onclick = () => {
-  authMode = "login";
-  renderMode();
-};
+const loginMode = $("#loginMode");
+const signupMode = $("#signupMode");
+const authForm = $("#auth");
+const emailInput = $("#email");
+const passwordInput = $("#password");
+const submitButton = $("#submit");
+const message = $("#msg");
 
-signupMode.onclick = () => {
-  authMode = "signup";
-  renderMode();
-};
+if (loginMode) {
+  loginMode.onclick = () => {
+    authMode = "login";
+    renderMode();
 
-auth.onsubmit = async e => {
-  e.preventDefault();
-  msg.textContent = "A processar…";
+    if (message) {
+      message.textContent = "";
+    }
+  };
+}
 
-  try {
-    if (authMode === "login") {
-      const r = await db.auth.signInWithPassword({
-        email: email.value.trim(),
-        password: password.value
+if (signupMode) {
+  signupMode.onclick = () => {
+    authMode = "signup";
+    renderMode();
+
+    if (message) {
+      message.textContent = "";
+    }
+  };
+}
+
+if (authForm) {
+  authForm.onsubmit = async (event) => {
+    event.preventDefault();
+
+    if (!window.db) {
+      if (message) {
+        message.textContent =
+          "Erro: ligação ao Supabase não encontrada.";
+      }
+      return;
+    }
+
+    const userEmail = emailInput
+      ? emailInput.value.trim()
+      : "";
+
+    const userPassword = passwordInput
+      ? passwordInput.value
+      : "";
+
+    if (!userEmail || !userPassword) {
+      if (message) {
+        message.textContent =
+          "Preenche o email e a palavra-passe.";
+      }
+      return;
+    }
+
+    if (message) {
+      message.textContent = "A processar…";
+    }
+
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
+
+    try {
+      // =========================
+      // LOGIN
+      // =========================
+
+      if (authMode === "login") {
+        const result = await db.auth.signInWithPassword({
+          email: userEmail,
+          password: userPassword
+        });
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        if (message) {
+          message.textContent =
+            "Login efetuado. A entrar…";
+        }
+
+        window.location.href = "mundos.html";
+        return;
+      }
+
+      // =========================
+      // CRIAR CONTA
+      // =========================
+
+      const result = await db.auth.signUp({
+        email: userEmail,
+        password: userPassword
       });
 
-      if (r.error) throw r.error;
-
-      location.href = "mundos.html";
-      return;
-    }
-
-    const r = await db.auth.signUp({
-      email: email.value.trim(),
-      password: password.value,
-      options: {
-        emailRedirectTo: "https://giovancarlos68-create.github.io/Jeo21/mundos.html"
+      if (result.error) {
+        throw result.error;
       }
-    });
 
-    if (r.error) throw r.error;
+      /*
+        Com "Confirm email" desligado no Supabase,
+        o signup deve devolver uma sessão.
 
-    if (!r.data.session) {
-      msg.textContent =
-        "Conta criada. Verifica o teu email para confirmar a conta. " +
-        "Se não chegar, verifica o Spam e usa o botão de reenviar.";
-      return;
-    }
+        Se houver sessão, o utilizador entra
+        imediatamente sem precisar confirmar email.
+      */
 
-    location.href = "mundos.html";
+      if (result.data && result.data.session) {
+        if (message) {
+          message.textContent =
+            "Conta criada. A entrar…";
+        }
 
-  } catch (e) {
-    msg.textContent = e.message;
-  }
-};
-
-async function resendConfirmation() {
-  const mail = email.value.trim();
-
-  if (!mail) {
-    msg.textContent = "Introduz primeiro o teu email.";
-    return;
-  }
-
-  msg.textContent = "A reenviar confirmação…";
-
-  try {
-    const r = await db.auth.resend({
-      type: "signup",
-      email: mail,
-      options: {
-        emailRedirectTo:
-          "https://giovancarlos68-create.github.io/Jeo21/mundos.html"
+        window.location.href = "mundos.html";
+        return;
       }
-    });
 
-    if (r.error) throw r.error;
+      /*
+        Se não houver sessão, NÃO mostramos mensagem
+        a dizer para confirmar email.
 
-    msg.textContent =
-      "Email de confirmação reenviado. Verifica também o Spam.";
-  } catch (e) {
-    msg.textContent = e.message;
-  }
+        Isso significa que existe alguma configuração
+        do Supabase/Auth que ainda está a impedir
+        o login automático.
+      */
+
+      if (message) {
+        message.textContent =
+          "A conta foi criada, mas o Supabase não devolveu uma sessão. " +
+          "Verifica se 'Confirm email' está realmente desligado no J24.";
+      }
+
+    } catch (error) {
+      console.error("Erro de autenticação:", error);
+
+      if (message) {
+        message.textContent =
+          error?.message ||
+          "Ocorreu um erro ao autenticar.";
+      }
+
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
+    }
+  };
 }
 
-const resendBtn = document.getElementById("resendConfirm");
+// Esconde qualquer botão antigo de confirmação,
+// caso ainda exista no index.html.
+const resendConfirmation = $("#resendConfirm");
 
-if (resendBtn) {
-  resendBtn.onclick = resendConfirmation;
+if (resendConfirmation) {
+  resendConfirmation.classList.add("hidden");
 }
 
+// Estado inicial
 renderMode();
