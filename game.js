@@ -1,184 +1,309 @@
-let world = Number(new URLSearchParams(location.search).get("world") || 1);
+const params = new URLSearchParams(location.search);
+
+const world = Number(params.get("world") || 1);
+
 let questionData = null;
 let questionNo = 0;
 let startTime = 0;
+let answering = false;
 
-const $ = (s) => document.querySelector(s);
+const $ = (selector) => document.querySelector(selector);
+
+const next = $("#next");
+const answers = $("#answers");
+const result = $("#result");
+const source = $("#source");
+const question = $("#question");
+const worldNo = $("#worldNo");
+const qNo = $("#qNo");
+const diff = $("#diff");
+const bar = $("#bar");
+
+function setMessage(text) {
+  if (result) {
+    result.textContent = text || "";
+  }
+}
+
+function setLoading(loading) {
+  if (next) {
+    next.disabled = loading;
+  }
+}
+
+function resetQuestionUI() {
+  if (next) {
+    next.classList.add("hidden");
+  }
+
+  if (answers) {
+    answers.innerHTML = "";
+  }
+
+  if (result) {
+    result.textContent = "";
+    result.removeAttribute("title");
+  }
+
+  if (source) {
+    source.textContent = "";
+  }
+}
 
 async function loadQuestion() {
-  next.classList.add("hidden");
-  answers.innerHTML = "";
-  result.textContent = "";
-  source.textContent = "";
+  if (answering) return;
+
+  resetQuestionUI();
+  setLoading(true);
 
   try {
-    const u = await J21.user();
-    if (!u) return;
+    const user = await J21.requireAuth();
 
-    const d = await J21.rpc("j21_get_difficulty", {
-      p_user_id: u.id,
-      p_world_id: world
-    });
+    if (!user) {
+      return;
+    }
+
+    const difficultyData = await J21.rpc(
+      "j21_get_difficulty",
+      {
+        p_user_id: user.id,
+        p_world_id: world
+      }
+    );
 
     const difficulty = Number(
-      d?.difficulty ??
-      d?.preferred_difficulty ??
+      difficultyData?.difficulty ??
+      difficultyData?.preferred_difficulty ??
       3
     );
 
-    const r = await J21.rpc("j21_next_question", {
-      p_user_id: u.id,
-      p_world_id: world,
-      p_difficulty: difficulty
-    });
+    const questionResult = await J21.rpc(
+      "j21_next_question",
+      {
+        p_user_id: user.id,
+        p_world_id: world,
+        p_difficulty: difficulty
+      }
+    );
 
-    questionData = r;
-    questionNo++;
+    if (!questionResult?.id) {
+      throw new Error("Não foi possível carregar a pergunta.");
+    }
+
+    questionData = questionResult;
+    questionNo += 1;
     startTime = performance.now();
 
-    worldNo.textContent =
-      `MUNDO ${String(world).padStart(2, "0")} / 21`;
+    if (worldNo) {
+      worldNo.textContent =
+        `MUNDO ${String(world).padStart(2, "0")} / 21`;
+    }
 
-    qNo.textContent = `PERGUNTA ${questionNo}`;
+    if (qNo) {
+      qNo.textContent =
+        `PERGUNTA ${questionNo}`;
+    }
 
-    diff.textContent =
-      `DIF. ${r?.difficulty ?? difficulty}`;
+    if (diff) {
+      diff.textContent =
+        `DIF. ${questionResult.difficulty ?? difficulty}`;
+    }
 
-    bar.style.width =
-      `${((questionNo - 1) % 10 + 1) * 10}%`;
+    if (bar) {
+      const progress =
+        ((questionNo - 1) % 10 + 1) * 10;
 
-    question.textContent =
-      r?.question || "Pergunta indisponível";
+      bar.style.width = `${progress}%`;
+    }
 
-    source.textContent =
-      r?.source_note || r?.image_alt || "";
+    if (question) {
+      question.textContent =
+        questionResult.question ||
+        "Pergunta indisponível.";
+    }
 
-    const opts = Array.isArray(r?.options)
-      ? r.options
+    if (source) {
+      source.textContent =
+        questionResult.source_note ||
+        questionResult.image_alt ||
+        "";
+    }
+
+    const options = Array.isArray(questionResult.options)
+      ? questionResult.options
       : [];
 
-    opts.forEach((o, i) => {
+    if (!options.length) {
+      throw new Error("Esta pergunta não possui opções.");
+    }
+
+    options.forEach((option, index) => {
       const button = document.createElement("button");
 
       button.type = "button";
       button.className = "answer";
 
-      button.textContent =
-        typeof o === "string"
-          ? o
-          : (
-              o?.text ??
-              o?.label ??
-              o?.value ??
-              `Opção ${i + 1}`
-            );
+      if (typeof option === "string") {
+        button.textContent = option;
+      } else {
+        button.textContent =
+          option?.text ??
+          option?.label ??
+          option?.value ??
+          `Opção ${index + 1}`;
+      }
 
-      button.onclick = () => answer(i, button);
+      button.addEventListener(
+        "click",
+        () => submitAnswer(index)
+      );
 
       answers.appendChild(button);
     });
 
-  } catch (e) {
-    question.textContent = e.message;
+  } catch (error) {
+    console.error("Erro ao carregar pergunta:", error);
+
+    setMessage(
+      error?.message ||
+      "Não foi possível carregar a pergunta."
+    );
+  } finally {
+    setLoading(false);
   }
 }
 
+async function submitAnswer(selectedIndex) {
+  if (answering || !questionData?.id) {
+    return;
+  }
 
-async function answer(index, button) {
+  answering = true;
 
-  document
-    .querySelectorAll(".answer")
-    .forEach(b => b.disabled = true);
+  const buttons =
+    document.querySelectorAll(".answer");
+
+  buttons.forEach((button) => {
+    button.disabled = true;
+  });
 
   try {
+    const user = await J21.user();
 
-    const u = await J21.user();
-
-    /*
-      IMPORTANTE:
-      A resposta correta NÃO é descoberta
-      no navegador.
-
-      O backend recebe o índice escolhido,
-      consulta correct_index na tabela
-      j21_questions e determina se está certo.
-    */
-
-    const r = await J21.rpc("j21_submit_answer", {
-
-      p_user_id: u.id,
-
-      p_world_id: world,
-
-      p_question_id: questionData.id,
-
-      p_selected_index: index,
-
-      p_time_ms:
-        Math.max(
-          100,
-          Math.round(performance.now() - startTime)
-        )
-    });
-
-
-    button.classList.add(
-      r.correct
-        ? "correct"
-        : "wrong"
-    );
-
-
-    result.textContent =
-      `${r.correct ? "✓ Correto" : "✕ Incorreto"} · ` +
-      `+${r.xp_gained ?? 0} XP · ` +
-      `nível ${r.level ?? "—"}`;
-
-
-    if (r.explanation) {
-      result.title = r.explanation;
+    if (!user) {
+      throw new Error(
+        "A sessão terminou. Entra novamente."
+      );
     }
 
+    const timeMs = Math.max(
+      100,
+      Math.round(performance.now() - startTime)
+    );
+
+    /*
+      A resposta correta NÃO é conhecida pelo navegador.
+
+      O backend:
+      1. recebe a opção escolhida;
+      2. procura a pergunta;
+      3. compara com correct_index;
+      4. calcula XP e estatísticas;
+      5. devolve o resultado.
+    */
+
+    const response = await J21.rpc(
+      "j21_submit_answer",
+      {
+        p_user_id: user.id,
+        p_world_id: world,
+        p_question_id: questionData.id,
+        p_selected_index: selectedIndex,
+        p_time_ms: timeMs
+      }
+    );
+
+    const correct = response?.correct === true;
+
+    buttons.forEach((button, index) => {
+      if (index === selectedIndex) {
+        button.classList.add(
+          correct ? "correct" : "wrong"
+        );
+      }
+    });
+
+    setMessage(
+      `${correct ? "✓ Correto" : "✕ Incorreto"} · ` +
+      `+${response?.xp_gained ?? 0} XP · ` +
+      `nível ${response?.level ?? "—"}`
+    );
+
+    if (response?.explanation) {
+      result.title = response.explanation;
+    }
+
+    /*
+      Atualiza a dificuldade adaptativa uma única vez
+      depois da resposta validada pelo backend.
+    */
 
     await J21.rpc(
       "j21_update_difficulty",
       {
-        p_user_id: u.id,
+        p_user_id: user.id,
         p_world_id: world,
-        p_correct: !!r.correct
+        p_correct: correct
       }
     );
 
+    if (next) {
+      next.classList.remove("hidden");
+    }
 
-    next.classList.remove("hidden");
+  } catch (error) {
+    console.error("Erro ao responder:", error);
 
+    setMessage(
+      error?.message ||
+      "Não foi possível registar a resposta."
+    );
 
-  } catch (e) {
+    buttons.forEach((button) => {
+      button.disabled = false;
+    });
 
-    result.textContent = e.message;
-
-    document
-      .querySelectorAll(".answer")
-      .forEach(b => b.disabled = false);
+  } finally {
+    answering = false;
   }
 }
 
+if (next) {
+  next.addEventListener(
+    "click",
+    loadQuestion
+  );
+}
 
-next.onclick = loadQuestion;
-
-
-(async () => {
-
-  const u = await J21.requireAuth();
-
-  if (!u) return;
+(async function startGame() {
 
   try {
+    const user = await J21.requireAuth();
+
+    if (!user) {
+      return;
+    }
+
+    if (!Number.isInteger(world) || world < 1 || world > 21) {
+      throw new Error(
+        "Mundo inválido. Escolhe um mundo entre 1 e 21."
+      );
+    }
 
     await J21.rpc(
       "j21_start_session",
       {
-        p_user_id: u.id,
+        p_user_id: user.id,
         p_world_id: world,
         p_mode: "classic"
       }
@@ -186,10 +311,13 @@ next.onclick = loadQuestion;
 
     await loadQuestion();
 
-  } catch (e) {
+  } catch (error) {
+    console.error("Erro ao iniciar jogo:", error);
 
-    question.textContent = e.message;
-
+    setMessage(
+      error?.message ||
+      "Não foi possível iniciar o jogo."
+    );
   }
 
 })();
