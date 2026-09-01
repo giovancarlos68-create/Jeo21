@@ -1,5 +1,4 @@
 const params = new URLSearchParams(location.search);
-
 const world = Number(params.get("world") || 1);
 
 let questionData = null;
@@ -20,34 +19,30 @@ const diff = $("#diff");
 const bar = $("#bar");
 
 function setMessage(text) {
-  if (result) {
-    result.textContent = text || "";
-  }
+  if (result) result.textContent = text || "";
 }
 
 function setLoading(loading) {
-  if (next) {
-    next.disabled = loading;
-  }
+  if (next) next.disabled = loading;
 }
 
 function resetQuestionUI() {
-  if (next) {
-    next.classList.add("hidden");
-  }
+  if (next) next.classList.add("hidden");
 
-  if (answers) {
-    answers.innerHTML = "";
-  }
+  if (answers) answers.innerHTML = "";
 
   if (result) {
     result.textContent = "";
     result.removeAttribute("title");
   }
 
-  if (source) {
-    source.textContent = "";
-  }
+  if (source) source.textContent = "";
+}
+
+function isAlreadyProcessed(error) {
+  return String(error?.message || "")
+    .toLowerCase()
+    .includes("question already processed");
 }
 
 async function loadQuestion() {
@@ -59,9 +54,7 @@ async function loadQuestion() {
   try {
     const user = await J21.requireAuth();
 
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
     const difficultyData = await J21.rpc(
       "j21_get_difficulty",
@@ -87,7 +80,9 @@ async function loadQuestion() {
     );
 
     if (!questionResult?.id) {
-      throw new Error("Não foi possível carregar a pergunta.");
+      throw new Error(
+        "Não foi possível carregar a pergunta."
+      );
     }
 
     questionData = questionResult;
@@ -129,16 +124,21 @@ async function loadQuestion() {
         "";
     }
 
-    const options = Array.isArray(questionResult.options)
+    const options = Array.isArray(
+      questionResult.options
+    )
       ? questionResult.options
       : [];
 
     if (!options.length) {
-      throw new Error("Esta pergunta não possui opções.");
+      throw new Error(
+        "Esta pergunta não possui opções."
+      );
     }
 
     options.forEach((option, index) => {
-      const button = document.createElement("button");
+      const button =
+        document.createElement("button");
 
       button.type = "button";
       button.className = "answer";
@@ -162,19 +162,26 @@ async function loadQuestion() {
     });
 
   } catch (error) {
-    console.error("Erro ao carregar pergunta:", error);
+    console.error(
+      "Erro ao carregar pergunta:",
+      error
+    );
 
     setMessage(
       error?.message ||
       "Não foi possível carregar a pergunta."
     );
+
   } finally {
     setLoading(false);
   }
 }
 
 async function submitAnswer(selectedIndex) {
-  if (answering || !questionData?.id) {
+  if (
+    answering ||
+    !questionData?.id
+  ) {
     return;
   }
 
@@ -183,9 +190,11 @@ async function submitAnswer(selectedIndex) {
   const buttons =
     document.querySelectorAll(".answer");
 
-  buttons.forEach((button) => {
-    button.disabled = true;
-  });
+  buttons.forEach(
+    (button) => {
+      button.disabled = true;
+    }
+  );
 
   try {
     const user = await J21.user();
@@ -198,19 +207,10 @@ async function submitAnswer(selectedIndex) {
 
     const timeMs = Math.max(
       100,
-      Math.round(performance.now() - startTime)
+      Math.round(
+        performance.now() - startTime
+      )
     );
-
-    /*
-      A resposta correta NÃO é conhecida pelo navegador.
-
-      O backend:
-      1. recebe a opção escolhida;
-      2. procura a pergunta;
-      3. compara com correct_index;
-      4. calcula XP e estatísticas;
-      5. devolve o resultado.
-    */
 
     const response = await J21.rpc(
       "j21_submit_answer",
@@ -223,15 +223,20 @@ async function submitAnswer(selectedIndex) {
       }
     );
 
-    const correct = response?.correct === true;
+    const correct =
+      response?.correct === true;
 
-    buttons.forEach((button, index) => {
-      if (index === selectedIndex) {
-        button.classList.add(
-          correct ? "correct" : "wrong"
-        );
+    buttons.forEach(
+      (button, index) => {
+        if (index === selectedIndex) {
+          button.classList.add(
+            correct
+              ? "correct"
+              : "wrong"
+          );
+        }
       }
-    });
+    );
 
     setMessage(
       `${correct ? "✓ Correto" : "✕ Incorreto"} · ` +
@@ -239,39 +244,84 @@ async function submitAnswer(selectedIndex) {
       `nível ${response?.level ?? "—"}`
     );
 
-    if (response?.explanation) {
-      result.title = response.explanation;
+    if (
+      response?.explanation &&
+      result
+    ) {
+      result.title =
+        response.explanation;
     }
 
     /*
-      Atualiza a dificuldade adaptativa uma única vez
-      depois da resposta validada pelo backend.
+      A resposta já foi validada e registada
+      pelo backend.
+
+      A dificuldade é atualizada separadamente.
+      Se essa atualização falhar, não anulamos
+      a resposta que já foi registada.
     */
 
-    await J21.rpc(
-      "j21_update_difficulty",
-      {
-        p_user_id: user.id,
-        p_world_id: world,
-        p_correct: correct
-      }
-    );
+    try {
+      await J21.rpc(
+        "j21_update_difficulty",
+        {
+          p_user_id: user.id,
+          p_world_id: world,
+          p_correct: correct
+        }
+      );
+    } catch (difficultyError) {
+      console.warn(
+        "Falha ao atualizar dificuldade:",
+        difficultyError
+      );
+    }
+
+    questionData = null;
 
     if (next) {
       next.classList.remove("hidden");
     }
 
   } catch (error) {
-    console.error("Erro ao responder:", error);
+    console.error(
+      "Erro ao responder:",
+      error
+    );
+
+    /*
+      Se o servidor disser que a pergunta
+      já foi processada, NÃO tentamos enviá-la
+      novamente.
+
+      Apenas descartamos a pergunta atual
+      e carregamos outra.
+    */
+
+    if (isAlreadyProcessed(error)) {
+      questionData = null;
+
+      setMessage(
+        "Resposta já registada. A carregar a próxima pergunta…"
+      );
+
+      answering = false;
+
+      await loadQuestion();
+
+      return;
+    }
 
     setMessage(
       error?.message ||
       "Não foi possível registar a resposta."
     );
 
-    buttons.forEach((button) => {
-      button.disabled = false;
-    });
+    buttons.forEach(
+      (button) => {
+        button.disabled = false;
+      }
+    );
 
   } finally {
     answering = false;
@@ -288,13 +338,16 @@ if (next) {
 (async function startGame() {
 
   try {
-    const user = await J21.requireAuth();
+    const user =
+      await J21.requireAuth();
 
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
-    if (!Number.isInteger(world) || world < 1 || world > 21) {
+    if (
+      !Number.isInteger(world) ||
+      world < 1 ||
+      world > 21
+    ) {
       throw new Error(
         "Mundo inválido. Escolhe um mundo entre 1 e 21."
       );
@@ -312,7 +365,10 @@ if (next) {
     await loadQuestion();
 
   } catch (error) {
-    console.error("Erro ao iniciar jogo:", error);
+    console.error(
+      "Erro ao iniciar jogo:",
+      error
+    );
 
     setMessage(
       error?.message ||
